@@ -1,0 +1,22 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Firebase secrets – do NOT commit these
+firebase-applet-config.json
+
+# Runtime-generated server files – contain user data
+uploads/
+closet-fallback.json
+
+# IDE artifacts
+.vscode/
+.idea/
+*.suo
+*.user
+Thumbs.db

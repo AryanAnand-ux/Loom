@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Item validation
+    function isValidItem(data) {
+      return data.keys().hasAll(['ownerId', 'imageUrl', 'storagePath', 'category', 'colorPalette', 'formalityScore', 'season', 'vibe', 'isDirty', 'isFavorite', 'createdAt']) &&
+             data.keys().size() == 11 &&
+             data.ownerId == request.auth.uid &&
+             data.imageUrl is string && data.imageUrl.size() <= 2048 &&
+             data.storagePath is string && data.storagePath.size() <= 512 &&
+             data.category is string && data.category.size() <= 100 &&
+             data.colorPalette is list && data.colorPalette.size() <= 10 &&
+             data.formalityScore is int && data.formalityScore >= 1 && data.formalityScore <= 10 &&
+             data.season is string && data.season.size() <= 50 &&
+             data.vibe is string && data.vibe.size() <= 100 &&
+             data.isDirty is bool &&
+             data.isFavorite is bool &&
+             data.createdAt is timestamp;
+    }
+
+    // User Closet
+    match /users/{userId}/closet/{itemId} {
+      allow get: if isOwner(userId) && isValidId(itemId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(itemId) && isValidItem(incoming()) && incoming().createdAt == request.time;
+      allow update: if isOwner(userId) && isValidId(itemId) && isValidItem(incoming()) && (
+        // Identity integrity
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt && (
+        // Action: Toggle Laundry/Favorite
+        incoming().diff(existing()).affectedKeys().hasOnly(['isDirty', 'isFavorite']) ||
+        // Action: Generic Edit
+        incoming().diff(existing()).affectedKeys().hasOnly(['category', 'colorPalette', 'formalityScore', 'season', 'vibe', 'imageUrl', 'isDirty', 'isFavorite']))
+      );
+      allow delete: if isOwner(userId) && isValidId(itemId);
+    }
+    // Outfit validation
+    function isValidOutfit(data) {
+      return data.keys().hasAll(['ownerId', 'topId', 'bottomId', 'footwearId', 'stylistNote', 'scene', 'createdAt']) &&
+             data.keys().size() == 7 &&
+             data.ownerId == request.auth.uid &&
+             data.topId is string && data.topId.size() <= 128 &&
+             data.bottomId is string && data.bottomId.size() <= 128 &&
+             data.footwearId is string && data.footwearId.size() <= 128 &&
+             data.stylistNote is string && data.stylistNote.size() <= 5000 &&
+             data.scene is string && data.scene.size() <= 1000 &&
+             data.createdAt is timestamp;
+    }
+
+    // User Outfits
+    match /users/{userId}/outfits/{outfitId} {
+      allow get: if isOwner(userId) && isValidId(outfitId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(outfitId) && isValidOutfit(incoming()) && incoming().createdAt == request.time;
+      allow update: if isOwner(userId) && isValidId(outfitId) && isValidOutfit(incoming()) && (
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['scene'])
+      );
+      allow delete: if isOwner(userId) && isValidId(outfitId);
+    }
+  }
+}
