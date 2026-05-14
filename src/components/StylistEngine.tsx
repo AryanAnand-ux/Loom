@@ -32,6 +32,20 @@ export default function StylistEngine({ userId }: { userId: string }) {
   const [isSaved, setIsSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const formatSuggestionError = (err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err);
+
+    if (message.includes("unresolved") || message.includes("could not be resolved")) {
+      return "I couldn't map the AI suggestion to items in your closet. Try adding clearer tops, bottoms, and shoes, then dress me again.";
+    }
+
+    if (message.includes("dirty")) {
+      return "The AI picked an item marked as dirty. Clean that item or swap it out, then try again.";
+    }
+
+    return message || "Failed to generate suggestion. Please try again.";
+  };
+
   const styleMe = async (currentRejected: string[] = []) => {
     if (closet.length < 3) {
       setError("Please add at least 3 items to your closet (Top, Bottom, Footwear) first.");
@@ -45,7 +59,7 @@ export default function StylistEngine({ userId }: { userId: string }) {
       setSuggestion(data);
       setIsSaved(false);
     } catch (err) {
-      setError("Failed to generate suggestion. Please try again.");
+      setError(formatSuggestionError(err));
       console.error(err);
     } finally {
       setIsCurationInProcess(false);
@@ -83,8 +97,8 @@ export default function StylistEngine({ userId }: { userId: string }) {
   return (
     <div className="max-w-4xl mx-auto space-y-8 md:space-y-12 pb-4">
       <header className="space-y-1">
-        <h2 className="text-3xl md:text-4xl font-serif italic">Stylist Intelligence</h2>
-        <p className="text-gray-500 text-sm">Loom uses color theory and scene context to dress you.</p>
+        <h2 className="text-3xl md:text-4xl font-serif italic">Outfit Maker</h2>
+        <p className="text-gray-500 text-sm">Loom generates outfit suggestions based on your closet and scene.</p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-12">

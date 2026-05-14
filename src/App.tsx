@@ -1,8 +1,8 @@
 import { lazy, Suspense, useState, useEffect, Component, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from "react-router-dom";
-import { User, signOut, onAuthStateChanged } from "firebase/auth";
-import { LayoutDashboard, Shirt, Sparkles, PlusCircle, ChevronLeft, Menu, Bookmark, LogOut } from "lucide-react";
-import Auth, { UserProfile } from "./components/Auth";
+import { User, onAuthStateChanged } from "firebase/auth";
+import { LayoutDashboard, Shirt, Sparkles, PlusCircle, ChevronLeft, Menu, Bookmark, Settings as SettingsIcon } from "lucide-react";
+import Auth from "./components/Auth";
 import { auth } from "./lib/firebase";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -39,14 +39,21 @@ const ClosetGrid = lazy(() => import("./components/ClosetGrid"));
 const Lookbook = lazy(() => import("./components/Lookbook"));
 const StylistEngine = lazy(() => import("./components/StylistEngine"));
 const AddItem = lazy(() => import("./components/AddItem"));
+const SettingsPage = lazy(() => import("./components/Settings/SettingsPage"));
+const ProfilePage = lazy(() => import("./components/Settings/ProfilePage"));
+const AboutPage = lazy(() => import("./components/Settings/AboutPage"));
+const ChangePasswordPage = lazy(() => import("./components/Settings/ChangePasswordPage"));
+const PrivacyPage = lazy(() => import("./components/Settings/PrivacyPage"));
+const DeleteAccountPage = lazy(() => import("./components/Settings/DeleteAccountPage"));
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/closet",    icon: Shirt,           label: "My Closet"  },
   { to: "/lookbook",  icon: Bookmark,        label: "Lookbook"   },
-  { to: "/stylist",   icon: Sparkles,        label: "Stylist AI" },
+  { to: "/stylist",   icon: Sparkles,        label: "Outfit Maker" },
   { to: "/add",       icon: PlusCircle,      label: "Add Item"   },
+  { to: "/settings",  icon: SettingsIcon,    label: "Settings"   },
 ];
 
 // ─── Desktop Sidebar NavItem ─────────────────────────────────────────────────
@@ -192,26 +199,10 @@ export default function App() {
               ))}
             </nav>
           </div>
-
-          <div className="mt-auto">
-            <UserProfile user={user} isCollapsed={!isSidebarOpen} />
-          </div>
         </motion.aside>
 
         {/* ── Main Content ── */}
         <main className="flex-1 overflow-y-auto relative">
-          {/* Top Right Logout — desktop only */}
-          <div className="absolute top-4 right-4 md:top-6 md:right-8 z-40">
-            <button
-              onClick={() => signOut(auth)}
-              className="flex items-center gap-2 px-3 py-2 md:px-4 rounded-full bg-white/80 backdrop-blur-md border border-gray-200 text-gray-500 hover:text-red-500 hover:border-red-100 hover:bg-red-50 transition-all shadow-sm group"
-              title="Logout"
-            >
-              <span className="text-[10px] font-bold tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-opacity hidden md:inline">Sign Out</span>
-              <LogOut size={16} />
-            </button>
-          </div>
-
           {/* Mobile header bar */}
           <div className="flex md:hidden items-center px-4 pt-4 pb-2 gap-3 sticky top-0 z-30 bg-[#f5f2ed]/95 backdrop-blur-md border-b border-gray-100">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-white shrink-0">
@@ -225,11 +216,17 @@ export default function App() {
               <Suspense fallback={<div className="py-20 text-center text-sm text-gray-500">Loading section...</div>}>
                 <Routes>
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                  <Route path="/dashboard" element={<Dashboard userId={user.uid} />} />
+                  <Route path="/dashboard" element={<Dashboard userId={user.uid} user={user} />} />
                   <Route path="/closet" element={<ClosetGrid userId={user.uid} />} />
                   <Route path="/lookbook" element={<Lookbook userId={user.uid} />} />
                   <Route path="/stylist" element={<StylistEngine userId={user.uid} />} />
                   <Route path="/add" element={<AddItemWrapper userId={user.uid} />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/settings/profile" element={<ProfilePage user={user} />} />
+                  <Route path="/settings/about" element={<AboutPage />} />
+                  <Route path="/settings/change-password" element={<ChangePasswordPage user={user} />} />
+                  <Route path="/settings/privacy" element={<PrivacyPage />} />
+                  <Route path="/settings/delete-account" element={<DeleteAccountPage user={user} />} />
                   <Route path="*" element={
                     <div className="py-20 text-center space-y-3">
                       <p className="text-3xl font-serif italic text-gray-700">Page not found.</p>

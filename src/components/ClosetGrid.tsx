@@ -58,24 +58,27 @@ export default function ClosetGrid({ userId }: { userId: string }) {
     const isTopWear = ["t-shirt", "shirt", "hoodie", "sweater", "jacket", "top", "blouse", "coat", "tank top", "sweatshirt"].some((k) => catLower.includes(k));
     const isBottomWear = ["jeans", "pants", "shorts", "skirt", "bottom", "trousers", "joggers", "leggings"].some((k) => catLower.includes(k));
     const isShoes = ["shoes", "sneakers", "boots", "heels", "sandals", "footwear", "oxfords", "loafers", "trainers"].some((k) => catLower.includes(k));
+    const isAccessories = ["accessory", "accessories", "watch", "watches", "chain", "chains", "bracelet", "bracelets", "necklace", "necklaces", "ring", "rings", "belt", "belts", "bag", "bags", "sunglasses", "glasses", "cap", "hat"].some((k) => catLower.includes(k));
     if (selectedFilter === "Favorites") matchesTab = item.isFavorite;
     else if (selectedFilter === "Needs Laundry") matchesTab = item.isDirty;
     else if (selectedFilter === "Top Wear") matchesTab = isTopWear || catLower.includes("top wear");
     else if (selectedFilter === "Bottom Wear") matchesTab = isBottomWear || catLower.includes("bottom wear");
     else if (selectedFilter === "Shoes") matchesTab = isShoes || catLower.includes("shoes");
+    else if (selectedFilter === "Accessories") matchesTab = isAccessories || catLower.includes("accessories");
     else if (selectedFilter !== "All") matchesTab = item.category === selectedFilter;
     return matchesSearch && matchesTab;
   }), [items, filter, selectedFilter]);
 
-  const presetTabs = ["All", "Top Wear", "Bottom Wear", "Shoes", "Favorites", "Needs Laundry"];
+  const presetTabs = ["All", "Top Wear", "Bottom Wear", "Shoes", "Accessories", "Favorites", "Needs Laundry"];
   const categories = useMemo(() => {
     const dynamicCategories = Array.from(new Set(items.map((i) => i.category))).filter((cat: string) => {
       const catLower = cat.toLowerCase();
       const isTopWear = ["t-shirt", "shirt", "hoodie", "sweater", "jacket", "top", "blouse", "coat", "tank top", "sweatshirt"].some((k) => catLower.includes(k));
       const isBottomWear = ["jeans", "pants", "shorts", "skirt", "bottom", "trousers", "joggers", "leggings"].some((k) => catLower.includes(k));
       const isShoes = ["shoes", "sneakers", "boots", "heels", "sandals", "footwear", "oxfords", "loafers", "trainers"].some((k) => catLower.includes(k));
-      if (isTopWear || isBottomWear || isShoes) return false;
-      if (["top wear", "bottom wear", "shoes", "favorites", "needs laundry", "all"].includes(catLower)) return false;
+      const isAccessories = ["accessory", "accessories", "watch", "watches", "chain", "chains", "bracelet", "bracelets", "necklace", "necklaces", "ring", "rings", "belt", "belts", "bag", "bags", "sunglasses", "glasses", "cap", "hat"].some((k) => catLower.includes(k));
+      if (isTopWear || isBottomWear || isShoes || isAccessories) return false;
+      if (["top wear", "bottom wear", "shoes", "accessories", "favorites", "needs laundry", "all"].includes(catLower)) return false;
       return true;
     });
     return [...presetTabs, ...dynamicCategories].slice(0, 15);

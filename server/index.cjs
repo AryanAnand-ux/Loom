@@ -110,7 +110,7 @@ function formatGeminiError(error) {
 
 function buildFallbackClassification() {
   return {
-    category: 'Clothing Item',
+    category: 'Unknown',
     color_palette: ['black', 'white'],
     formality_score: 5,
     season: 'All-season',
@@ -176,7 +176,7 @@ app.post('/api/classify', async (req, res) => {
         {
           parts: [
             {
-              text: 'Analyze this clothing image. Return ONLY valid JSON with these exact fields: category (string, e.g. "T-shirt"), color_palette (array of color strings), formality_score (integer 1-10), season (string: Summer/Winter/Monsoon/All-season), vibe (string, e.g. "Streetwear").'
+              text: 'Analyze this wardrobe item image. Return ONLY valid JSON with these exact fields: category (string, e.g. "T-shirt" or "Accessories" for watches, chains, belts, bags, sunglasses, etc.), color_palette (array of color strings), formality_score (integer 1-10), season (string: Summer/Winter/Monsoon/All-season), vibe (string, e.g. "Streetwear").'
             },
             { inlineData: { mimeType, data: imageData } },
           ],
@@ -197,7 +197,7 @@ app.post('/api/classify', async (req, res) => {
     const formatted = formatGeminiError(error);
     console.error('Classification Error:', error && error.message ? error.message : error);
     if (formatted.status === 429 || formatted.status === 400 || formatted.status === 404) {
-      return res.status(200).json(buildFallbackClassification());
+      return res.status(formatted.status).json({ error: formatted.message, fallback: buildFallbackClassification() });
     }
 
     res.status(formatted.status).json({ error: formatted.message });
@@ -236,8 +236,7 @@ Rules:
       promptText += `\n- NEVER use these item IDs: ${rejectedIds.join(', ')}.`;
     }
 
-    promptText += `\n- Use color theory for a cohesive look.
-Return ONLY valid JSON with fields: topId (string), bottomId (string), footwearId (string), stylistNote (1 sentence string).`;
+    promptText += `\n- Use color theory for a cohesive look.\n- IMPORTANT: When returning topId/bottomId/footwearId, use the exact \`id\` string from the provided closet JSON. If you prefer, you may also return the category name, but in that case the server will try to resolve that category to an available item id.\n- Return ONLY valid JSON with fields: topId (string), bottomId (string), footwearId (string), stylistNote (1 sentence string).`;
 
     const response = await generateWithFallback(ai, {
       contents: promptText,
@@ -245,13 +244,51 @@ Return ONLY valid JSON with fields: topId (string), bottomId (string), footwearI
     });
 
     const parsed = safeParseJSON(response.text, 'suggest');
-    
+
     // Validate response structure
     if (!parsed.topId || !parsed.bottomId || !parsed.footwearId || !parsed.stylistNote) {
       throw new Error('Invalid response structure from AI');
     }
-    
-    res.json(parsed);
+
+    // Resolve returned ids: allow AI to return either exact item IDs or category names.
+    const closetIds = (closet || []).map(i => String(i.id));
+    function resolveChoice(choice) {
+      if (!choice) return null;
+      const s = String(choice).trim();
+      if (closetIds.includes(s)) return s;
+      // Try exact category match
+      const byCategory = (closet || []).find(i => String(i.category || '').toLowerCase() === s.toLowerCase());
+      if (byCategory) return String(byCategory.id);
+      // Try contains
+      const byContains = (closet || []).find(i => String(i.category || '').toLowerCase().includes(s.toLowerCase()));
+      if (byContains) return String(byContains.id);
+      return null;
+    }
+
+    const resolvedTop = resolveChoice(parsed.topId);
+    const resolvedBottom = resolveChoice(parsed.bottomId);
+    const resolvedFootwear = resolveChoice(parsed.footwearId);
+
+    if (!resolvedTop || !resolvedBottom || !resolvedFootwear) {
+      throw new Error('AI returned item identifiers that could not be resolved to your closet items');
+    }
+
+    // Ensure AI did not pick items marked dirty
+    const findItem = (id) => (closet || []).find(i => String(i.id) === String(id));
+    const topItem = findItem(resolvedTop);
+    const bottomItem = findItem(resolvedBottom);
+    const footwearItem = findItem(resolvedFootwear);
+
+    if (!topItem || !bottomItem || !footwearItem) {
+      throw new Error('Resolved items not found in closet');
+    }
+
+    if (topItem.isDirty || bottomItem.isDirty || footwearItem.isDirty) {
+      throw new Error('AI selected item(s) that are marked as dirty. Please clean or remove them from the closet and try again.');
+    }
+
+    // Return normalized object with resolved ids
+    res.json({ topId: resolvedTop, bottomId: resolvedBottom, footwearId: resolvedFootwear, stylistNote: String(parsed.stylistNote) });
   } catch (error) {
     const formatted = formatGeminiError(error);
     console.error('Suggestion Error:', error && error.message ? error.message : error);
