@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, useEffect, Component, type ReactNode } from "
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, Link } from "react-router-dom";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { LayoutDashboard, Shirt, Sparkles, PlusCircle, ChevronLeft, Menu, Bookmark, Settings as SettingsIcon } from "lucide-react";
+import { Analytics } from "@vercel/analytics/react";
 import Auth from "./components/Auth";
 import { auth } from "./lib/firebase";
 import { motion, AnimatePresence } from "motion/react";
@@ -146,8 +147,10 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <div className="flex h-screen bg-[#f5f2ed] text-gray-900 overflow-hidden">
+    <>
+      <Analytics />
+      <BrowserRouter>
+        <div className="flex h-screen bg-[#f5f2ed] text-gray-900 overflow-hidden">
 
         {/* ── Desktop Sidebar (hidden on mobile) ── */}
         <motion.aside
@@ -245,9 +248,10 @@ export default function App() {
         </main>
       </div>
 
-      {/* Mobile bottom navigation */}
-      <MobileBottomNav />
-    </BrowserRouter>
+        {/* Mobile bottom navigation */}
+        <MobileBottomNav />
+      </BrowserRouter>
+    </>
   );
 }
 
